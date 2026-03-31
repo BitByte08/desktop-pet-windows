@@ -1,0 +1,97 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'          # v1.0.0, v1.2.3 등 태그 푸시 시 자동 실행
+  workflow_dispatch:  # 수동 실행도 가능
+
+jobs:
+  build:
+    name: Build DesktopPet.dmg
+    runs-on: macos-14   # Apple Silicon runner (M1)
+
+    steps:
+      # ── 1. 소스 체크아웃 ────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── 2. Xcode 버전 확인 ──────────────────────────────────────────────
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app
+          xcodebuild -version
+
+      # ── 3. 코드사인 없이 빌드 (배포용 .app 생성) ────────────────────────
+      # 서명 없이 빌드하면 다른 Mac에서 "개발자 확인 불가" 경고가 뜨지만
+      # 사용자가 시스템 설정 → 개인 정보 보호 및 보안에서 허용할 수 있음.
+      # 서명이 필요하면 Apple Developer 인증서를 Secrets에 추가해야 함.
+      - name: Build (unsigned)
+        run: |
+          xcodebuild \
+            -project DesktopPet.xcodeproj \
+            -scheme DesktopPet \
+            -configuration Release \
+            -destination 'platform=macOS,arch=arm64' \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            CONFIGURATION_BUILD_DIR="$PWD/build/Release" \
+            build
+
+      # ── 4. .app → .dmg 패키징 ───────────────────────────────────────────
+      - name: Create DMG
+        run: |
+          APP_PATH="$PWD/build/Release/DesktopPet.app"
+          DMG_PATH="$PWD/build/DesktopPet.dmg"
+
+          # hdiutil로 DMG 생성
+          hdiutil create \
+            -volname "Desktop Pet" \
+            -srcfolder "$APP_PATH" \
+            -ov \
+            -format UDZO \
+            "$DMG_PATH"
+
+          echo "DMG created: $DMG_PATH"
+          ls -lh "$DMG_PATH"
+
+      # ── 5. 버전 태그 추출 ───────────────────────────────────────────────
+      - name: Get version
+        id: version
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION="dev-$(git rev-parse --short HEAD)"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      # ── 6. GitHub Release 생성 + DMG 업로드 ────────────────────────────
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: "Desktop Pet ${{ steps.version.outputs.version }}"
+          body: |
+            ## Desktop Pet ${{ steps.version.outputs.version }}
+
+            ### 설치 방법
+            1. 아래 `DesktopPet.dmg` 다운로드
+            2. DMG 열기 → `DesktopPet.app`을 `/Applications` 폴더로 드래그
+            3. 처음 실행 시: 시스템 설정 → 개인 정보 보호 및 보안 → "확인 없이 열기" 클릭
+            4. 메뉴바에 🐾 아이콘이 나타나면 완료
+
+            ### 요구사항
+            - macOS 14.0 이상
+            - Apple Silicon (M1/M2/M3/M4)
+
+            ### 지원 형식
+            - GIF, APNG, PNG 시퀀스 (투명 배경 지원)
+            - MP4, MOV (배경 있음)
+          files: build/DesktopPet.dmg
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

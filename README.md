@@ -10,6 +10,83 @@ Import a GIF, APNG, PNG sequence, or video — it floats on your screen, loops f
 
 ---
 
+## ⬇️ 다운로드 및 설치
+
+### 방법 1 — 릴리즈에서 바로 다운로드 (권장)
+
+1. 이 페이지 오른쪽 **[Releases](https://github.com/bssm-oss/desktop-pet/releases)** 클릭
+2. 최신 버전의 **`DesktopPet.dmg`** 다운로드
+3. DMG 파일 열기
+4. `DesktopPet.app`을 **응용 프로그램(Applications)** 폴더로 드래그
+5. 응용 프로그램 폴더에서 실행
+
+> **처음 실행 시 경고가 뜨는 경우:**  
+> macOS 보안 정책으로 인해 "개발자를 확인할 수 없음" 경고가 뜰 수 있습니다.  
+> **시스템 설정 → 개인 정보 보호 및 보안 → "확인 없이 열기"** 를 클릭하면 됩니다.  
+> 또는 터미널에서: `xattr -cr /Applications/DesktopPet.app`
+
+### 방법 2 — 소스에서 직접 빌드
+
+요구사항: macOS 14+, Xcode 15+, Apple Silicon Mac
+
+```bash
+git clone https://github.com/bssm-oss/desktop-pet.git
+cd desktop-pet
+open DesktopPet.xcodeproj
+```
+
+Xcode에서:
+1. `DesktopPet` 스킴 선택
+2. **Signing & Capabilities** → Team 설정 (Apple ID)
+3. `⌘R` 로 빌드 및 실행
+
+---
+
+## 실행 후 사용법
+
+앱을 실행하면 독(Dock)에는 아이콘이 나타나지 않고, **메뉴바에 🐾 아이콘**이 생깁니다.
+
+### 애니메이션 불러오기
+
+| 방법 | 설명 |
+|------|------|
+| 드래그 앤 드롭 | 파일을 화면의 캐릭터 위로 드래그 |
+| 파일 선택 | 🐾 클릭 → "애니메이션 열기…" |
+| PNG 시퀀스 | 프레임 PNG가 들어있는 폴더 선택 |
+
+### 조작
+
+| 동작 | 방법 |
+|------|------|
+| 위치 이동 | 캐릭터를 클릭하고 드래그 |
+| 설정 열기 | 🐾 왼쪽 클릭 |
+| 빠른 토글 | 🐾 오른쪽 클릭 |
+| 재생 / 일시정지 | 설정 패널 또는 오른쪽 클릭 메뉴 |
+| 투명도 조절 | 설정 패널 슬라이더 |
+| 크기 조절 | 설정 패널 슬라이더 |
+| 재생 속도 | 설정 패널 슬라이더 |
+| 클릭 통과 | 설정 토글 — 켜면 클릭이 아래 창으로 통과 |
+| 위치 잠금 | 설정 토글 — 실수로 움직이는 것 방지 |
+| 항상 위에 표시 | 설정 토글 |
+| 로그인 시 자동 시작 | 설정 패널 토글 |
+
+---
+
+## 지원 파일 형식
+
+| 형식 | 투명 배경 | 비고 |
+|------|----------|------|
+| GIF | ✅ | 투명도 완전 지원 |
+| APNG | ✅ | macOS 14 네이티브 지원 |
+| PNG 시퀀스 (폴더) | ✅ | 파일명 순 정렬, 기본 24fps |
+| MP4 / MOV (H.264/H.265) | ❌ | 투명 배경 없음 |
+| ProRes 4444 (.mov) | ✅ | 투명 비디오, 하드웨어 디코딩 |
+| HEVC with Alpha (.mov) | ✅ | macOS 13+, 작은 파일 크기 |
+
+> MP4 파일은 투명 배경을 지원하지 않습니다. 투명한 캐릭터 오버레이를 원하면 GIF, APNG, PNG 시퀀스를 사용하세요.
+
+---
+
 ## What it does
 
 - Displays any animation or video as a **transparent floating overlay** above your desktop
@@ -20,120 +97,36 @@ Import a GIF, APNG, PNG sequence, or video — it floats on your screen, loops f
 
 ---
 
-## Supported formats
-
-| Format | Transparency | Notes |
-|--------|-------------|-------|
-| GIF | ✅ | Full alpha, per-frame disposal |
-| APNG | ✅ | Native macOS 14 ImageIO support |
-| PNG sequence (folder) | ✅ | Sorted alphabetically, 24fps default |
-| MP4 / MOV (H.264/H.265) | ❌ | No alpha — renders with background |
-| ProRes 4444 (.mov) | ✅ | Transparent video, hardware decoded |
-| HEVC with Alpha (.mov) | ✅ | macOS 13+, smaller than ProRes |
-
-> **Note:** Standard MP4 files (including `evernight.mp4`) do not support alpha transparency. They will display with a solid background. For a true transparent overlay, use GIF, APNG, PNG sequence, or ProRes 4444.
-
----
-
-## Quick start
-
-### Requirements
-- macOS 14.0+
-- Apple Silicon Mac (M1/M2/M3/M4)
-- Xcode 15+
-
-### Build & Run
-
-```bash
-git clone https://github.com/bssm-oss/desktop-pet.git
-cd desktop-pet
-open DesktopPet.xcodeproj
-```
-
-In Xcode:
-1. Select the `DesktopPet` scheme
-2. Set your Development Team in Signing & Capabilities
-3. Press `⌘R` to build and run
-
-The app launches as a menubar icon (🐾). No dock icon appears.
-
----
-
-## Usage
-
-### Import an animation
-
-**Option 1 — Drag and drop:**  
-Drag any supported file directly onto the floating overlay window.
-
-**Option 2 — File picker:**  
-Click the 🐾 menubar icon → "Import Animation…"
-
-**Option 3 — PNG sequence:**  
-Select a folder containing `frame_0001.png`, `frame_0002.png`, etc.
-
-### Controls
-
-| Action | How |
-|--------|-----|
-| Move overlay | Click and drag the character |
-| Open settings | Left-click 🐾 |
-| Quick toggles | Right-click 🐾 |
-| Play / Pause | Settings panel or right-click menu |
-| Opacity | Settings panel slider |
-| Scale | Settings panel slider |
-| Speed | Settings panel slider |
-| Click-through | Toggle in settings — clicks pass through |
-| Lock position | Toggle in settings — prevents accidental moves |
-| Always on top | Toggle in settings |
-| Start at Login | Settings panel toggle |
-
----
-
 ## Project structure
 
 ```
 DesktopPet/
-├── App/
-│   ├── AppDelegate.swift          # Entry point, app lifecycle
-│   └── Info.plist                 # LSUIElement=YES, no dock icon
-├── Window/
-│   ├── OverlayWindow.swift        # Transparent NSWindow subclass
-│   ├── PetView.swift              # CALayer render view + drag + drop
-│   └── OverlayWindowController.swift  # Coordinates window + playback
-├── Playback/
-│   ├── AnimationPlayer.swift      # CVDisplayLink frame scheduler
-│   ├── FrameSequence.swift        # Decoded frames + timing
-│   ├── GIFDecoder.swift           # ImageIO GIF decode
-│   ├── APNGDecoder.swift          # ImageIO APNG decode
-│   ├── PNGSequenceDecoder.swift   # Folder of PNGs → animation
-│   └── VideoPlayer.swift          # AVFoundation MP4/MOV
-├── MenuBar/
-│   └── MenuBarController.swift    # NSStatusItem + menus + settings panel
-├── Settings/
-│   ├── AppSettings.swift          # UserDefaults-backed observable state
-│   └── SettingsView.swift         # SwiftUI settings panel
-└── Utilities/
-    ├── PlaceholderAnimation.swift # Built-in fallback animation
-    └── SecurityScopedAccess.swift # Bookmark persistence for sandboxed file access
+├── App/                    # AppDelegate, main.swift, Info.plist
+├── Window/                 # OverlayWindow, PetView, OverlayWindowController
+├── Playback/               # AnimationPlayer, decoders, FrameSequence, VideoPlayer
+├── MenuBar/                # MenuBarController
+├── Settings/               # AppSettings, SettingsView
+└── Utilities/              # PlaceholderAnimation, SecurityScopedAccess
 ```
 
 ---
 
-## Architecture
+## Docs
 
-See [docs/architecture.md](docs/architecture.md) for the full technical design.
+- [Architecture](docs/architecture.md)
+- [Build & Run](docs/build-and-run.md)
+- [Supported Formats](docs/formats.md)
+- [Performance](docs/performance.md)
+- [Troubleshooting](docs/troubleshooting.md)
 
 ---
 
 ## Performance
 
-- **CVDisplayLink** — display-sync scheduling, ProMotion-aware, sleeps between frames
+- **CVDisplayLink** — display-sync, ProMotion-aware, sleeps between frames
 - **CALayer.contents** — zero-copy GPU upload, no CPU pixel blitting
 - **ImageIO** — hardware-backed decode on Apple Silicon
-- **AVFoundation** — hardware video decode via Neural Engine / Media Engine
-- **Frame-change detection** — CALayer only updated when frame index changes
-- **No unnecessary redraws** — compositor not disturbed on static frames
+- **AVFoundation** — hardware video decode via Media Engine
 
 Typical CPU usage at steady state: **< 1%** on M-series chips.
 
