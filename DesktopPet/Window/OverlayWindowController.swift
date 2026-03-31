@@ -1,7 +1,6 @@
 // OverlayWindowController.swift
-// Owns and manages the transparent overlay NSWindow lifecycle.
+// Owns and manages one transparent overlay NSWindow.
 // Coordinates between AppSettings, AnimationPlayer, VideoPlayer, and PetView.
-// Handles asset loading, window sizing, and settings application.
 
 import AppKit
 import AVFoundation
@@ -11,7 +10,7 @@ import Combine
 final class OverlayWindowController: NSWindowController {
 
     // MARK: - Dependencies
-    private let settings: AppSettings
+    let settings: AppSettings
     private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Playback
@@ -24,13 +23,13 @@ final class OverlayWindowController: NSWindowController {
     // MARK: - State
     private var currentAssetURL: URL?
     private var isVideoMode: Bool = false
+    private var naturalSize: NSSize = NSSize(width: 200, height: 200)
 
     // MARK: - Init
 
     init(settings: AppSettings) {
         self.settings = settings
 
-        // Build the window
         let size = NSSize(width: 300, height: 300)
         let origin = settings.savedPosition()
         let rect = NSRect(origin: origin, size: size)
@@ -70,13 +69,10 @@ final class OverlayWindowController: NSWindowController {
         petView.lockPosition = settings.lockPosition
         petView.clickThrough = settings.clickThrough
         animationPlayer.speed = settings.speed
-        if settings.playing {
-            animationPlayer.play()
-        }
+        if settings.playing { animationPlayer.play() }
     }
 
     // MARK: - Settings Observation
-    // React to settings changes from the SwiftUI panel in real time.
 
     private func observeSettings() {
         settings.$opacity.sink { [weak self] v in
@@ -114,23 +110,9 @@ final class OverlayWindowController: NSWindowController {
 
     // MARK: - Asset Loading
 
-    /// Load a placeholder animation (first launch / no asset).
-    func loadPlaceholder() {
-        isVideoMode = false
-        videoPlayer = nil
-        removeVideoLayer()
-        let seq = PlaceholderAnimation.make()
-        resizeWindow(to: NSSize(width: 200, height: 200))
-        animationPlayer.load(seq)
-        if settings.playing { animationPlayer.play() }
-    }
-
-    /// Load an asset from a security-scoped bookmark (app restart).
+    /// Restore asset from a security-scoped bookmark (app restart).
     func loadAssetFromBookmark(_ bookmark: Data) {
-        guard let url = SecurityScopedAccess.resolve(bookmark: bookmark) else {
-            loadPlaceholder()
-            return
-        }
+        guard let url = SecurityScopedAccess.resolve(bookmark: bookmark) else { return }
         _ = url.startAccessingSecurityScopedResource()
         loadAsset(url: url)
     }
@@ -140,7 +122,6 @@ final class OverlayWindowController: NSWindowController {
         currentAssetURL = url
         let ext = url.pathExtension.lowercased()
 
-        // Save bookmark for next launch
         if let bookmark = SecurityScopedAccess.bookmark(for: url) {
             settings.assetBookmark = bookmark
         }
@@ -153,12 +134,11 @@ final class OverlayWindowController: NSWindowController {
         case "mp4", "mov", "m4v", "avi", "mkv":
             loadVideo(url: url)
         default:
-            // Try as PNG sequence directory or single image
             var isDir: ObjCBool = false
             if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir), isDir.boolValue {
                 loadPNGSequence(directory: url)
             } else {
-                loadAPNG(url: url) // fallback: try as image
+                loadAPNG(url: url)
             }
         }
     }
@@ -166,11 +146,8 @@ final class OverlayWindowController: NSWindowController {
     private func loadGIF(url: URL) {
         isVideoMode = false
         removeVideoLayer()
-        guard let seq = GIFDecoder.decode(url: url) else {
-            loadPlaceholder(); return
-        }
-        let size = sizeForSequence(seq)
-        resizeWindow(to: size)
+        guard let seq = GIFDecoder.decode(url: url) else { return }
+        resizeWindow(to: sizeForSequence(seq))
         animationPlayer.load(seq)
         if settings.playing { animationPlayer.play() }
     }
@@ -178,11 +155,8 @@ final class OverlayWindowController: NSWindowController {
     private func loadAPNG(url: URL) {
         isVideoMode = false
         removeVideoLayer()
-        guard let seq = APNGDecoder.decode(url: url) else {
-            loadPlaceholder(); return
-        }
-        let size = sizeForSequence(seq)
-        resizeWindow(to: size)
+        guard let seq = APNGDecoder.decode(url: url) else { return }
+        resizeWindow(to: sizeForSequence(seq))
         animationPlayer.load(seq)
         if settings.playing { animationPlayer.play() }
     }
@@ -190,11 +164,8 @@ final class OverlayWindowController: NSWindowController {
     private func loadPNGSequence(directory: URL) {
         isVideoMode = false
         removeVideoLayer()
-        guard let seq = PNGSequenceDecoder.decode(directory: directory) else {
-            loadPlaceholder(); return
-        }
-        let size = sizeForSequence(seq)
-        resizeWindow(to: size)
+        guard let seq = PNGSequenceDecoder.decode(directory: directory) else { return }
+        resizeWindow(to: sizeForSequence(seq))
         animationPlayer.load(seq)
         if settings.playing { animationPlayer.play() }
     }
@@ -202,20 +173,14 @@ final class OverlayWindowController: NSWindowController {
     private func loadVideo(url: URL) {
         isVideoMode = true
         animationPlayer.stop()
-
-        guard let vp = VideoPlayer(url: url) else {
-            loadPlaceholder(); return
-        }
+        guard let vp = VideoPlayer(url: url) else { return }
         videoPlayer = vp
         vp.speed = Float(settings.speed)
-
-        // Add AVPlayerLayer to the pet view's layer
         if let rootLayer = petView.layer {
             vp.playerLayer.frame = rootLayer.bounds
             vp.playerLayer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
             rootLayer.addSublayer(vp.playerLayer)
         }
-
         if settings.playing { vp.play() }
     }
 
@@ -237,13 +202,9 @@ final class OverlayWindowController: NSWindowController {
 
     private func resizeWindow(to size: NSSize) {
         guard let window else { return }
-        let origin = window.frame.origin
-        let newFrame = NSRect(origin: origin, size: size)
+        let newFrame = NSRect(origin: window.frame.origin, size: size)
         window.setFrame(newFrame, display: true, animate: false)
     }
-
-    /// Natural (unscaled) pixel size of the current asset.
-    private var naturalSize: NSSize = NSSize(width: 200, height: 200)
 
     private func applyScale(_ scale: Double) {
         guard let window else { return }
@@ -251,9 +212,8 @@ final class OverlayWindowController: NSWindowController {
         let newW = naturalSize.width * scale
         let newH = naturalSize.height * scale
         let newOrigin = NSPoint(x: center.x - newW / 2, y: center.y - newH / 2)
-        let newFrame = NSRect(origin: newOrigin, size: NSSize(width: newW, height: newH))
-        window.setFrame(newFrame, display: true, animate: false)
-
+        window.setFrame(NSRect(origin: newOrigin, size: NSSize(width: newW, height: newH)),
+                        display: true, animate: false)
         if let vp = videoPlayer, let rootLayer = petView.layer {
             vp.playerLayer.frame = rootLayer.bounds
         }
