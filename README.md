@@ -12,7 +12,35 @@ Import a GIF, APNG, PNG sequence, or video — it floats on your screen, loops f
 
 ## ⬇️ 다운로드 및 설치
 
-### 방법 1 — 릴리즈에서 바로 다운로드 (권장)
+### 방법 1 — Homebrew (권장)
+
+[Homebrew](https://brew.sh)가 설치되어 있다면 아래 명령어 한 줄로 설치할 수 있습니다:
+
+```bash
+brew tap bssm-oss/desktop-pet https://github.com/bssm-oss/desktop-pet.git
+brew install --cask bssm-oss/desktop-pet/desktop-pet
+```
+
+업데이트:
+
+```bash
+brew upgrade --cask desktop-pet
+```
+
+삭제:
+
+```bash
+brew uninstall --cask desktop-pet
+```
+
+> **Homebrew가 없다면:** [brew.sh](https://brew.sh)에서 먼저 설치하세요.  
+> ```bash
+> /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+> ```
+
+---
+
+### 방법 2 — 릴리즈에서 직접 다운로드
 
 1. 이 페이지 오른쪽 **[Releases](https://github.com/bssm-oss/desktop-pet/releases)** 클릭
 2. 최신 버전의 **`DesktopPet.dmg`** 다운로드
@@ -25,13 +53,50 @@ Import a GIF, APNG, PNG sequence, or video — it floats on your screen, loops f
 > **시스템 설정 → 개인 정보 보호 및 보안 → "확인 없이 열기"** 를 클릭하면 됩니다.  
 > 또는 터미널에서: `xattr -cr /Applications/DesktopPet.app`
 
-### 방법 2 — 소스에서 직접 빌드
+---
 
-요구사항: macOS 14+, Xcode 15+, Apple Silicon Mac
+### 방법 3 — 소스에서 직접 빌드
+
+요구사항: macOS 14+, Xcode Command Line Tools (`xcode-select --install`)
 
 ```bash
 git clone https://github.com/bssm-oss/desktop-pet.git
 cd desktop-pet
+
+SDK=$(xcrun --sdk macosx --show-sdk-path)
+mkdir -p build/DesktopPet.app/Contents/MacOS
+
+swiftc \
+  -sdk "$SDK" \
+  -target arm64-apple-macosx14.0 \
+  -O \
+  -framework AppKit -framework AVFoundation \
+  -framework CoreGraphics -framework ServiceManagement \
+  DesktopPet/App/main.swift \
+  DesktopPet/App/AppDelegate.swift \
+  DesktopPet/Settings/AppSettings.swift \
+  DesktopPet/Settings/SettingsView.swift \
+  DesktopPet/Playback/FrameSequence.swift \
+  DesktopPet/Playback/GIFDecoder.swift \
+  DesktopPet/Playback/APNGDecoder.swift \
+  DesktopPet/Playback/PNGSequenceDecoder.swift \
+  DesktopPet/Playback/AnimationPlayer.swift \
+  DesktopPet/Playback/VideoPlayer.swift \
+  DesktopPet/Utilities/PlaceholderAnimation.swift \
+  DesktopPet/Utilities/SecurityScopedAccess.swift \
+  DesktopPet/Window/OverlayWindow.swift \
+  DesktopPet/Window/PetView.swift \
+  DesktopPet/Window/OverlayWindowController.swift \
+  DesktopPet/MenuBar/MenuBarController.swift \
+  -o build/DesktopPet.app/Contents/MacOS/DesktopPet
+
+cp DesktopPet/App/Info.plist build/DesktopPet.app/Contents/Info.plist
+open build/DesktopPet.app
+```
+
+Xcode가 있다면:
+
+```bash
 open DesktopPet.xcodeproj
 ```
 
@@ -107,6 +172,8 @@ DesktopPet/
 ├── MenuBar/                # MenuBarController
 ├── Settings/               # AppSettings, SettingsView
 └── Utilities/              # PlaceholderAnimation, SecurityScopedAccess
+Casks/
+└── desktop-pet.rb          # Homebrew Cask formula
 ```
 
 ---
