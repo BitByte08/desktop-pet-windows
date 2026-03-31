@@ -34,9 +34,9 @@ enum GIFDecoder {
         let count = CGImageSourceGetCount(source)
         guard count > 0 else { return nil }
 
-        // Read canvas size from first frame
+        // Read canvas size from first frame (validate it has GIF metadata)
         guard let firstProps = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
-              let firstGIF = firstProps[kCGImagePropertyGIFDictionary] as? [CFString: Any]
+              let _ = firstProps[kCGImagePropertyGIFDictionary] as? [CFString: Any]
         else { return nil }
 
         var frames: [CGImage] = []
