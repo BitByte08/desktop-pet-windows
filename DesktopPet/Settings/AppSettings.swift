@@ -25,6 +25,9 @@ final class AppSettings: ObservableObject {
     @Published var lockPosition: Bool  { didSet { defaults.set(lockPosition, forKey: k("lockPosition")) } }
     @Published var alwaysOnTop: Bool   { didSet { defaults.set(alwaysOnTop,  forKey: k("alwaysOnTop")) } }
     @Published var playing: Bool       { didSet { defaults.set(playing,      forKey: k("playing")) } }
+    @Published var label: String       { didSet { defaults.set(label,        forKey: k("label")) } }
+    @Published var flipHorizontal: Bool { didSet { defaults.set(flipHorizontal, forKey: k("flipH")) } }
+    @Published var flipVertical: Bool   { didSet { defaults.set(flipVertical,   forKey: k("flipV")) } }
 
     // Security-scoped bookmark for the last imported asset
     var assetBookmark: Data? {
@@ -54,17 +57,23 @@ final class AppSettings: ObservableObject {
             kk("lockPosition"): false,
             kk("alwaysOnTop"):  true,
             kk("playing"):      true,
+            kk("label"):        "Pet \(idx)",
+            kk("flipH"):        false,
+            kk("flipV"):        false,
         ])
 
-        positionX    = defaults.double(forKey: kk("positionX"))
-        positionY    = defaults.double(forKey: kk("positionY"))
-        scale        = defaults.double(forKey: kk("scale"))
-        opacity      = defaults.double(forKey: kk("opacity"))
-        speed        = defaults.double(forKey: kk("speed"))
-        clickThrough = defaults.bool(forKey: kk("clickThrough"))
-        lockPosition = defaults.bool(forKey: kk("lockPosition"))
-        alwaysOnTop  = defaults.bool(forKey: kk("alwaysOnTop"))
-        playing      = defaults.bool(forKey: kk("playing"))
+        positionX       = defaults.double(forKey: kk("positionX"))
+        positionY       = defaults.double(forKey: kk("positionY"))
+        scale           = defaults.double(forKey: kk("scale"))
+        opacity         = defaults.double(forKey: kk("opacity"))
+        speed           = defaults.double(forKey: kk("speed"))
+        clickThrough    = defaults.bool(forKey: kk("clickThrough"))
+        lockPosition    = defaults.bool(forKey: kk("lockPosition"))
+        alwaysOnTop     = defaults.bool(forKey: kk("alwaysOnTop"))
+        playing         = defaults.bool(forKey: kk("playing"))
+        label           = defaults.string(forKey: kk("label")) ?? "Pet \(idx)"
+        flipHorizontal  = defaults.bool(forKey: kk("flipH"))
+        flipVertical    = defaults.bool(forKey: kk("flipV"))
     }
 
     // MARK: - Key helper (usable after init)
@@ -84,7 +93,8 @@ final class AppSettings: ObservableObject {
     /// Remove all UserDefaults keys for this instance.
     func removeAllKeys() {
         ["positionX","positionY","scale","opacity","speed",
-         "clickThrough","lockPosition","alwaysOnTop","playing","assetBookmark"]
+         "clickThrough","lockPosition","alwaysOnTop","playing","assetBookmark",
+         "label","flipH","flipV"]
             .forEach { defaults.removeObject(forKey: k($0)) }
     }
 }
