@@ -53,11 +53,12 @@ enum APNGDecoder {
               let pngProps = props[kCGImagePropertyPNGDictionary] as? [CFString: Any]
         else { return 1.0 / 24.0 }
 
-        // APNG stores delay as numerator/denominator
-        let num = pngProps[kCGImagePropertyAPNGDelayTimeNumerator] as? TimeInterval ?? 1
-        let den = pngProps[kCGImagePropertyAPNGDelayTimeDenominator] as? TimeInterval ?? 24
-
-        let delay = den > 0 ? num / den : 1.0 / 24.0
+        // Prefer unclamped delay time (same pattern as GIF decoder).
+        // kCGImagePropertyAPNGUnclampedDelayTime / kCGImagePropertyAPNGDelayTime
+        // are available since macOS 10.10 and present in all relevant SDKs.
+        let delay = (pngProps[kCGImagePropertyAPNGUnclampedDelayTime] as? TimeInterval)
+            ?? (pngProps[kCGImagePropertyAPNGDelayTime] as? TimeInterval)
+            ?? (1.0 / 24.0)
         return max(delay, 0.02)
     }
 }
