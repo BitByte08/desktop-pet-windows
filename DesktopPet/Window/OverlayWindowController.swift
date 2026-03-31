@@ -106,6 +106,14 @@ final class OverlayWindowController: NSWindowController {
             if v { self.animationPlayer.play(); self.videoPlayer?.play() }
             else { self.animationPlayer.pause(); self.videoPlayer?.pause() }
         }.store(in: &cancellables)
+
+        settings.$flipHorizontal.sink { [weak self] v in
+            self?.petView.flipHorizontal = v
+        }.store(in: &cancellables)
+
+        settings.$flipVertical.sink { [weak self] v in
+            self?.petView.flipVertical = v
+        }.store(in: &cancellables)
     }
 
     // MARK: - Asset Loading
