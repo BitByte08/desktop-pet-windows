@@ -118,7 +118,7 @@ private struct StartAtLoginToggle: View {
     var body: some View {
         Toggle("Start at Login", isOn: $isEnabled)
             .onAppear { isEnabled = SMAppService.mainApp.status == .enabled }
-            .onChange(of: isEnabled) { newValue in
+            .onChange(of: isEnabled) { _, newValue in
                 do {
                     if newValue {
                         try SMAppService.mainApp.register()
