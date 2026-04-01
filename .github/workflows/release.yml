@@ -154,7 +154,7 @@ jobs:
         shell: pwsh
         run: |
           $version = "${{ steps.version.outputs.semver }}"
-          & "C:\Program Files (x86)\NSIS\makensis.exe" /DAPP_VERSION=$version installer.nsi
+          & "C:\Program Files (x86)\NSIS\makensis.exe" /DAPP_VERSION=$version DesktopPet.Windows/installer.nsi
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
