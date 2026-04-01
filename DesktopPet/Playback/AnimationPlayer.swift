@@ -21,6 +21,7 @@ import QuartzCore
 import CoreGraphics
 import Foundation
 import Darwin
+import os
 
 @MainActor
 protocol AnimationPlayerDelegate: AnyObject {
