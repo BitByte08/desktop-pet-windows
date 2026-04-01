@@ -149,8 +149,7 @@ void AppController::processPendingRemoves() {
         pets_.erase(it);
     }
     pendingRemoves_.clear();
-    if (pets_.empty()) addDefaultPet();
-    else saveInstanceIDs();
+    saveInstanceIDs();
 }
 
 void AppController::run() {
@@ -273,8 +272,7 @@ void AppController::removePet(const std::string& id) {
     it->settings->removeSection();
     ShowWindow(it->window->getHwnd(), SW_HIDE);
     pets_.erase(it);
-    if (pets_.empty()) addDefaultPet();
-    else saveInstanceIDs();
+    saveInstanceIDs();
 }
 
 void AppController::quit() {
