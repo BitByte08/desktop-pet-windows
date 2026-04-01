@@ -4,7 +4,7 @@
 
 ; Override build output directory if needed: makensis /DBUILD_DIR=... installer.nsi
 !ifndef BUILD_DIR
-  !define BUILD_DIR "DesktopPet.Windows\build"
+  !define BUILD_DIR "build"
 !endif
 
 !define APP_NAME "Desktop Pet"
@@ -13,16 +13,18 @@
 !define REG_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}"
 
 Name "${APP_NAME} ${APP_VERSION}"
-OutFile "DesktopPet-Windows-Setup.exe"
+OutFile "..\DesktopPet-Windows-Setup.exe"
 InstallDir "$LOCALAPPDATA\DesktopPet"
 RequestExecutionLevel user
 SetCompressor lzma
 
+ManifestDPIAware true
+
 !include "MUI2.nsh"
 
 !define MUI_ABORTWARNING
-!define MUI_ICON "DesktopPet.Windows\app.ico"
-!define MUI_UNICON "DesktopPet.Windows\app.ico"
+!define MUI_ICON "app.ico"
+!define MUI_UNICON "app.ico"
 
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES

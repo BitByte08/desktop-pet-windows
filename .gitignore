@@ -37,7 +37,6 @@ desktop-pet/Cargo.lock
 .swiftpm/
 
 # Windows build output
-DesktopPet.Windows/build/
 *.obj
 *.exe
 *.dll
