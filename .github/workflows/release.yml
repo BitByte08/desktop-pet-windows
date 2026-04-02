@@ -3,7 +3,16 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - 'v[0-9]*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g. v1.2.0)'
+        required: true
+        default: 'v1.0.0'
+
+permissions:
+  contents: write
 
 jobs:
   build-mac:
@@ -14,24 +23,26 @@ jobs:
       semver: ${{ steps.version.outputs.semver }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Get version
-        id: version
+      - name: Print Swift and SDK version
         run: |
-          VERSION="${GITHUB_REF#refs/tags/}"
-          SEMVER="${VERSION#v}"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "semver=$SEMVER" >> $GITHUB_OUTPUT
+          swift --version
+          xcrun --sdk macosx --show-sdk-path
 
-      - name: Build with swiftc
+      - name: Build DesktopPet.app
         run: |
+          set -euo pipefail
+
           SDK=$(xcrun --sdk macosx --show-sdk-path)
-          APP_DIR="$PWD/build/DesktopPet.app"
-          BIN_DIR="$APP_DIR/Contents/MacOS"
-          RES_DIR="$APP_DIR/Contents/Resources"
+          APP="$PWD/build/DesktopPet.app"
+          BIN="$APP/Contents/MacOS"
+          RES="$APP/Contents/Resources"
 
-          mkdir -p "$BIN_DIR" "$RES_DIR"
+          mkdir -p "$BIN" "$RES"
 
           swiftc \
             -sdk "$SDK" \
@@ -58,44 +69,82 @@ jobs:
             DesktopPet/Window/PetView.swift \
             DesktopPet/Window/OverlayWindowController.swift \
             DesktopPet/MenuBar/MenuBarController.swift \
-            -o "$BIN_DIR/DesktopPet"
+            -o "$BIN/DesktopPet"
 
-          cp DesktopPet/App/Info.plist "$APP_DIR/Contents/Info.plist"
+          cp DesktopPet/App/Info.plist "$APP/Contents/Info.plist"
+          printf 'APPL????' > "$APP/Contents/PkgInfo"
+
           xcrun actool \
             --output-format human-readable-text \
             --notices --warnings \
             --platform macosx \
             --minimum-deployment-target 14.0 \
-            --compile "$RES_DIR" \
-            DesktopPet/Assets.xcassets 2>/dev/null || true
+            --compile "$RES" \
+            DesktopPet/Assets.xcassets \
+          || true
+
+          echo "=== Bundle contents ==="
+          find "$APP" -type f | sort
+
+      - name: Ad-hoc code sign
+        run: |
+          codesign --force --deep --sign - build/DesktopPet.app
+          codesign --verify --verbose build/DesktopPet.app
 
       - name: Create DMG
         run: |
+          set -euo pipefail
+
+          mkdir -p build/dmg-stage
+          cp -R build/DesktopPet.app build/dmg-stage/
+          ln -s /Applications build/dmg-stage/Applications
+
           hdiutil create \
             -volname "Desktop Pet" \
-            -srcfolder "$PWD/build/DesktopPet.app" \
-            -ov -format UDZO \
-            "$PWD/build/DesktopPet.dmg"
+            -srcfolder build/dmg-stage \
+            -ov \
+            -format UDZO \
+            build/DesktopPet.dmg
+
+          ls -lh build/DesktopPet.dmg
 
       - name: Compute SHA256
         id: sha
         run: |
-          SHA=$(shasum -a 256 "$PWD/build/DesktopPet.dmg" | awk '{print $1}')
-          echo "sha256=$SHA" >> $GITHUB_OUTPUT
+          SHA=$(shasum -a 256 build/DesktopPet.dmg | awk '{print $1}')
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+          echo "SHA256: $SHA"
 
-      - name: Update Homebrew Cask
+      - name: Resolve version
+        id: version
         run: |
-          VERSION="${{ steps.version.outputs.semver }}"
+          if [[ "${GITHUB_REF:-}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION="${{ github.event.inputs.version }}"
+          fi
+          SEMVER="${VERSION#v}"
+          echo "version=$VERSION"   >> "$GITHUB_OUTPUT"
+          echo "semver=$SEMVER"     >> "$GITHUB_OUTPUT"
+          echo "Version: $VERSION  Semver: $SEMVER"
+
+      - name: Patch Casks/desktop-pet.rb
+        run: |
+          VER="${{ steps.version.outputs.semver }}"
           SHA="${{ steps.sha.outputs.sha256 }}"
-          sed -i '' "s/sha256 .*/sha256 \"$SHA\"/" Casks/desktop-pet.rb
-          sed -i '' "s/version \".*\"/version \"$VERSION\"/" Casks/desktop-pet.rb
+          sed -i '' "s/^  version \".*\"/  version \"${VER}\"/" Casks/desktop-pet.rb
+          sed -i '' "s/^  sha256 .*/  sha256 \"${SHA}\"/"       Casks/desktop-pet.rb
 
-      - name: Commit updated Cask
+          echo "=== Updated Cask ==="
+          cat Casks/desktop-pet.rb
+
+      - name: Commit and push updated Cask
         run: |
-          git config user.name "github-actions[bot]"
+          git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Casks/desktop-pet.rb
-          git diff --staged --quiet || git commit -m "chore(cask): bump version to ${{ steps.version.outputs.semver }} and update SHA256 [skip ci]"
+          git diff --staged --quiet \
+            || git commit -m "chore(cask): bump to ${{ steps.version.outputs.semver }} and update SHA256 [skip ci]"
           git push origin HEAD:master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -117,7 +166,11 @@ jobs:
         id: version
         shell: pwsh
         run: |
-          $version = "${{ github.ref }}" -replace '^refs/tags/v', ''
+          if ("${{ github.ref }}" -match '^refs/tags/v') {
+            $version = "${{ github.ref }}" -replace '^refs/tags/v', ''
+          } else {
+            $version = "${{ github.event.inputs.version }}" -replace '^v', ''
+          }
           echo "semver=$version" >> $env:GITHUB_OUTPUT
 
       - name: Generate app icon
@@ -189,16 +242,25 @@ jobs:
             ```bash
             brew tap bssm-oss/desktop-pet https://github.com/bssm-oss/desktop-pet.git
             brew install --cask bssm-oss/desktop-pet/desktop-pet
+            # Remove quarantine flag (required for unsigned builds)
+            xattr -cr /Applications/DesktopPet.app
+            open /Applications/DesktopPet.app
             ```
 
             ### macOS 직접 다운로드
             1. `DesktopPet.dmg` 다운로드
             2. DMG 열기 → `DesktopPet.app`을 `/Applications` 폴더로 드래그
-            3. 처음 실행 시: 시스템 설정 → 개인 정보 보호 및 보안 → "확인 없이 열기"
+            3. 터미널에서 실행:
+               ```bash
+               xattr -cr /Applications/DesktopPet.app
+               open /Applications/DesktopPet.app
+               ```
 
             ### Windows 설치
             1. `DesktopPet-Windows-Setup.exe` 다운로드 후 실행
             2. 시스템 트레이(우측 하단)에 아이콘이 나타나면 완료
+
+            > Windows Defender SmartScreen 경고 시 **추가 정보 → 실행** 클릭
 
             ### 요구사항
             - macOS 14.0 (Sonoma) 이상, Apple Silicon
